@@ -1,0 +1,21 @@
+{
+  "name": "notes-app",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "e2e"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w packages/api\" \"npm run dev -w packages/web\"",
+    "build": "npm run build -w packages/api && npm run build -w packages/web",
+    "test:e2e": "npm run test -w e2e",
+    "db:migrate": "npm run migrate -w packages/api",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.5"
+  }
+}

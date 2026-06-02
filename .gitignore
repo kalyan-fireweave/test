@@ -141,3 +141,14 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Playwright
+e2e/playwright-report/
+e2e/test-results/
+
+# Build outputs
+packages/api/dist/
+packages/web/build/
+
+# SvelteKit
+packages/web/.svelte-kit/
