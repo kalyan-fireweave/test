@@ -1,7 +1,113 @@
 {
+  "feature": {
+    "createdAt": "2026-06-04T00:00:00.000Z",
+    "description": "Enables real-time collaborative editing so multiple users can work on the same note simultaneously",
+    "name": "notes-collaboration"
+  },
+  "flags": [
+    {
+      "key": "notes-collaboration",
+      "providerId": "fireweave-posthog",
+      "safeDefault": false,
+      "type": "boolean"
+    }
+  ],
+  "metrics": [
+    {
+      "id": "feature.notes-collaboration.adopted",
+      "query": "count(feature.notes-collaboration.adopted)",
+      "severity": "info",
+      "threshold": ">0"
+    },
+    {
+      "id": "feature.notes-collaboration.error",
+      "query": "count(feature.notes-collaboration.error)",
+      "severity": "warn",
+      "threshold": "<0.05"
+    },
+    {
+      "id": "feature.notes-collaboration.duration_ms",
+      "query": "p95(feature.notes-collaboration.duration_ms)",
+      "severity": "warn",
+      "threshold": "<2000"
+    }
+  ],
+  "orgId": "z2SZpl4o4aufgXpB5gJDYrNwEJHznRzm",
+  "projectId": "61d90e10-dd7b-442d-ae46-d703f3d9600a",
+  "projectName": "test_notepad",
+  "providers": {
+    "feature-flag.control": "fireweave-posthog",
+    "metric.query": "sentry"
+  },
+  "rollout": {
+    "guardrails": [
+      {
+        "condition": "gt",
+        "id": "error-rate-guardrail",
+        "metric": {
+          "query": "count(feature.notes-collaboration.error) / count(feature.notes-collaboration.adopted)",
+          "queryLanguage": "hogql",
+          "source": "metric.query"
+        },
+        "pollIntervalSeconds": 60,
+        "severity": "page",
+        "threshold": 0.05
+      }
+    ],
+    "schedule": [
+      {
+        "holdMinutes": 30,
+        "percent": 5
+      },
+      {
+        "holdMinutes": 30,
+        "percent": 25
+      },
+      {
+        "holdMinutes": 30,
+        "percent": 75
+      },
+      {
+        "holdMinutes": 30,
+        "percent": 100
+      }
+    ],
+    "style": "linear-percent"
+  },
+  "verification": {
+    "cohort_keying": "block",
+    "no_mixed_provider_calls": "block",
+    "no_orphan_flags": "block",
+    "provider_health": "advisory",
+    "rollout_config_schema": "block",
+    "safe_defaults": "block",
+    "telemetry_completeness": "advisory"
+  },
   "version": 1,
-  "profile": "217.216.59.25",
-  "projectId": "5b4b1e8e-5a3c-428c-b2e7-7cb31cc0c586",
-  "projectName": "test",
-  "orgId": "z2SZpl4o4aufgXpB5gJDYrNwEJHznRzm"
+  "wrapPoints": [
+    {
+      "file": "packages/api/src/application/use-cases/UpdateNoteUseCase.ts",
+      "flagKey": "notes-collaboration",
+      "symbol": "UpdateNoteUseCase.execute",
+      "wrapStyle": "method-guard"
+    },
+    {
+      "file": "packages/api/src/application/use-cases/CreateNoteUseCase.ts",
+      "flagKey": "notes-collaboration",
+      "symbol": "CreateNoteUseCase.execute",
+      "wrapStyle": "method-guard"
+    },
+    {
+      "file": "packages/web/src/lib/stores/notes.ts",
+      "flagKey": "notes-collaboration",
+      "symbol": "createNotesStore",
+      "wrapStyle": "function-guard"
+    },
+    {
+      "file": "packages/api/src/presentation/routes/noteRoutes.ts",
+      "flagKey": "notes-collaboration",
+      "symbol": "createNoteRouter",
+      "wrapStyle": "route-guard"
+    }
+  ]
 }

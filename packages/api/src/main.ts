@@ -13,7 +13,7 @@ async function main(): Promise<void> {
   await pool.query('SELECT 1');
   console.log('Database connected.');
 
-  const app = createApp(pool);
+  const app = await createApp(pool);
 
   app.listen(PORT, () => {
     console.log(`API server listening on http://0.0.0.0:${PORT}`);

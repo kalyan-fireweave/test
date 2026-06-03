@@ -11,7 +11,7 @@ import { NoteController } from './controllers/NoteController';
 import { createNoteRouter } from './routes/noteRoutes';
 import { errorHandler } from './middleware/errorHandler';
 
-export function createApp(pool: Pool): express.Application {
+export async function createApp(pool: Pool): Promise<express.Application> {
   const app = express();
 
   app.use(cors());
@@ -30,7 +30,7 @@ export function createApp(pool: Pool): express.Application {
     new DeleteNoteUseCase(noteRepo)
   );
 
-  app.use('/api/notes', createNoteRouter(controller));
+  app.use('/api/notes', await createNoteRouter(controller));
   app.use(errorHandler);
 
   return app;

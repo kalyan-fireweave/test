@@ -9,6 +9,9 @@
     "preview": "vite preview",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
+  "dependencies": {
+    "posthog-js": "^1.145.0"
+  },
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.0.1",
     "@sveltejs/kit": "^2.5.7",
