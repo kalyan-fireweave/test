@@ -9,20 +9,21 @@ export class CreateNoteUseCase {
 
   async execute(dto: CreateNoteDto): Promise<NoteDto> {
     validateNoteInput({ title: dto.title, content: dto.content });
-    const variant = await isFeatureEnabled('notes-collaboration', dto.title);
+    const variant = await isFeatureEnabled('notes-collaboration', 'anonymous');
     if (variant) {
       const t0 = Date.now();
       try {
-        posthog.capture(dto.title, 'feature.notes-collaboration.adopted');
+        posthog.capture('anonymous', 'feature.notes-collaboration.adopted');
+        posthog.capture('anonymous', 'feature.notes-collaboration.session_started');
         // TODO: initialise collaborative session on creation
         const note = await this.noteRepository.create({
           title: dto.title.trim(),
           content: dto.content,
         });
-        posthog.capture(dto.title, 'feature.notes-collaboration.duration_ms', { ms: Date.now() - t0 });
+        posthog.capture('anonymous', 'feature.notes-collaboration.duration_ms', { ms: Date.now() - t0 });
         return toNoteDto(note);
       } catch (err) {
-        posthog.capture(dto.title, 'feature.notes-collaboration.error');
+        posthog.capture('anonymous', 'feature.notes-collaboration.error');
         throw err;
       }
     }

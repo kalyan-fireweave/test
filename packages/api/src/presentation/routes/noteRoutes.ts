@@ -11,7 +11,7 @@ export async function createNoteRouter(controller: NoteController): Promise<Rout
   router.put('/:id', controller.update);
   router.delete('/:id', controller.delete);
 
-  const collaborationEnabled = await isFeatureEnabled('notes-collaboration', 'system');
+  const collaborationEnabled = await isFeatureEnabled('notes-collaboration', 'anonymous');
   if (collaborationEnabled) {
     // TODO: register WebSocket upgrade and collaboration-specific REST routes
     // router.get('/:id/session', collaborationController.getSession);
