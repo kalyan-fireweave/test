@@ -152,3 +152,4 @@ packages/web/build/
 
 # SvelteKit
 packages/web/.svelte-kit/
+.fireweave/.cache/
