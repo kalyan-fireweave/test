@@ -37,7 +37,9 @@ services:
       dockerfile: packages/web/Dockerfile
     restart: unless-stopped
     environment:
-      PUBLIC_API_URL: http://localhost:4376
+      PORT: 4376
+      HOST: 0.0.0.0
+      API_ORIGIN: http://api:3000
     ports:
       - "5173:4376"
     depends_on:
