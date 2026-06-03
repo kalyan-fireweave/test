@@ -1,97 +1,112 @@
-name: Deploy
+name: Deploy on git_actions
 
 on:
   push:
     branches:
       - main
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_API: ghcr.io/${{ github.repository }}/api
-  IMAGE_WEB: ghcr.io/${{ github.repository }}/web
-
 jobs:
-  build-and-push:
-    name: Build & Push Images
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push API image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./packages/api
-          push: true
-          tags: |
-            ${{ env.IMAGE_API }}:latest
-            ${{ env.IMAGE_API }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push Web image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./packages/web
-          push: true
-          tags: |
-            ${{ env.IMAGE_WEB }}:latest
-            ${{ env.IMAGE_WEB }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   deploy:
-    name: Deploy to Server
-    runs-on: ubuntu-latest
-    needs: build-and-push
+    runs-on: self-hosted
     environment: production
 
+    permissions:
+      contents: read
+      deployments: write
+
+    env:
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      DEPLOY_BRANCH: main
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-      - name: Copy deploy files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: demo/deploy-box.yml
-          target: ~/notes-app
+      - name: Log Layer 1 signal (push detected)
+        run: |
+          echo "[L1] push detected"
+          echo "repo=${{ github.repository }}"
+          echo "sha=${{ github.sha }}"
+          echo "branch=${{ github.ref_name }}"
+          echo "confidence=unknown"
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Create GitHub deployment (Layer 2)
+        id: create_deployment
+        uses: actions/github-script@v8
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            cd ~/notes-app
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: "production",
+              auto_merge: false,
+              required_contexts: []
+            });
 
-            # Pull latest images
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker pull ${{ env.IMAGE_API }}:${{ github.sha }}
-            docker pull ${{ env.IMAGE_WEB }}:${{ github.sha }}
+            core.setOutput("deployment_id", deployment.data.id);
 
-            # Point compose to pre-built images instead of building on server
-            export API_IMAGE=${{ env.IMAGE_API }}:${{ github.sha }}
-            export WEB_IMAGE=${{ env.IMAGE_WEB }}:${{ github.sha }}
+            console.log("[L2] deployment created");
+            console.log(`deployment_id=${deployment.data.id}`);
+            console.log(`sha=${context.sha}`);
+            console.log("confidence=production-confirmed");
 
-            docker compose -f demo/deploy-box.yml up -d --remove-orphans
+      - name: Deploy over SSH
+        id: ssh_deploy
+        uses: appleboy/ssh-action@v1.0.3
+        continue-on-error: true
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+          DEPLOY_BRANCH: ${{ env.DEPLOY_BRANCH }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          envs: DEPLOY_PATH,DEPLOY_BRANCH,POSTGRES_USER,POSTGRES_PASSWORD,POSTGRES_DB
+          script: |
+            echo "[DEPLOY] starting ssh deploy"
+            set -euo pipefail
 
-            # Clean up old images
-            docker image prune -f
+            cd "$DEPLOY_PATH"
+
+            git fetch --all
+            git checkout "$DEPLOY_BRANCH"
+            git pull origin "$DEPLOY_BRANCH"
+
+            {
+              echo "POSTGRES_USER=${POSTGRES_USER:-notes_user}"
+              echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-notes_password}"
+              echo "POSTGRES_DB=${POSTGRES_DB:-notes_db}"
+            } > .env
+
+            docker compose up -d --build --remove-orphans
+
+            sleep 10
+
+            curl -sf "http://127.0.0.1:3000/health" | head -c 300
+
+            echo ""
+            echo "[DEPLOY] completed"
+
+      # Always mark deployment as FAILURE
+      # even if deployment succeeded
+      - name: Mark deployment failure
+        if: ${{ always() }}
+        uses: actions/github-script@v8
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: Number("${{ steps.create_deployment.outputs.deployment_id }}"),
+              state: "failure",
+              description: "Forced failure status"
+            });
+
+            console.log("[L2] deployment_status=failure");
+            console.log("confidence=unknown");
+            console.log("forced_status=true");
