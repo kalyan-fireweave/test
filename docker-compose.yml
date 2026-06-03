@@ -26,7 +26,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-notes_user}:${POSTGRES_PASSWORD:-notes_password}@postgres:5432/${POSTGRES_DB:-notes_db}
       PORT: 3000
     ports:
-      - "3000:3000"
+      - "4376:3000"
     depends_on:
       postgres:
         condition: service_healthy
