@@ -83,10 +83,14 @@ jobs:
               echo "POSTGRES_DB=${POSTGRES_DB:-notes_db}"
             } > .env
 
-            docker compose down --remove-orphans || true
+            docker compose up -d postgres
+            for i in $(seq 1 30); do
+              docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-notes_user}" -d "${POSTGRES_DB:-notes_db}" && break
+              sleep 2
+            done
             docker compose up -d --build --remove-orphans
 
-            sleep 10
+            sleep 15
 
             curl -sf "http://127.0.0.1:4376/health" | head -c 300
 
