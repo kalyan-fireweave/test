@@ -53,7 +53,6 @@ jobs:
 
       - name: Deploy over SSH
         id: ssh_deploy
-        uses: appleboy/ssh-action@v1.0.3
         continue-on-error: true
         env:
           DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
@@ -61,41 +60,57 @@ jobs:
           POSTGRES_USER: ${{ vars.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: ${{ vars.POSTGRES_DB }}
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          envs: DEPLOY_PATH,DEPLOY_BRANCH,POSTGRES_USER,POSTGRES_PASSWORD,POSTGRES_DB
-          script: |
-            echo "[DEPLOY] starting ssh deploy"
-            set -euo pipefail
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
+        run: |
+          echo "[DEPLOY] starting ssh deploy"
+          set -euo pipefail
 
-            cd "$DEPLOY_PATH"
+          KEY_FILE="$(mktemp)"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          printf '%s\n' "$SSH_KEY" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
 
-            git fetch --all
-            git checkout "$DEPLOY_BRANCH"
-            git pull origin "$DEPLOY_BRANCH"
+          ssh -i "$KEY_FILE" -p "$SSH_PORT" \
+            -o StrictHostKeyChecking=accept-new \
+            -o BatchMode=yes \
+            "$SSH_USER@$SSH_HOST" \
+            "DEPLOY_PATH=$(printf %q "$DEPLOY_PATH") \
+             DEPLOY_BRANCH=$(printf %q "$DEPLOY_BRANCH") \
+             POSTGRES_USER=$(printf %q "${POSTGRES_USER:-}") \
+             POSTGRES_PASSWORD=$(printf %q "${POSTGRES_PASSWORD:-}") \
+             POSTGRES_DB=$(printf %q "${POSTGRES_DB:-}") \
+             bash -s" <<'REMOTE'
+          set -euo pipefail
 
-            {
-              echo "POSTGRES_USER=${POSTGRES_USER:-notes_user}"
-              echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-notes_password}"
-              echo "POSTGRES_DB=${POSTGRES_DB:-notes_db}"
-            } > .env
+          cd "$DEPLOY_PATH"
 
-            docker compose up -d postgres
-            for i in $(seq 1 30); do
-              docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-notes_user}" -d "${POSTGRES_DB:-notes_db}" && break
-              sleep 2
-            done
-            docker compose up -d --build --remove-orphans
+          git fetch --all
+          git checkout "$DEPLOY_BRANCH"
+          git pull origin "$DEPLOY_BRANCH"
 
-            sleep 15
+          {
+            echo "POSTGRES_USER=${POSTGRES_USER:-notes_user}"
+            echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-notes_password}"
+            echo "POSTGRES_DB=${POSTGRES_DB:-notes_db}"
+          } > .env
 
-            curl -sf "http://127.0.0.1:4376/health" | head -c 300
+          docker compose up -d postgres
+          for i in $(seq 1 30); do
+            docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-notes_user}" -d "${POSTGRES_DB:-notes_db}" && break
+            sleep 2
+          done
+          docker compose up -d --build --remove-orphans
 
-            echo ""
-            echo "[DEPLOY] completed"
+          sleep 15
+
+          curl -sf "http://127.0.0.1:4376/health" | head -c 300
+
+          echo ""
+          echo "[DEPLOY] completed"
+          REMOTE
 
       # Always mark deployment as FAILURE
       # even if deployment succeeded
