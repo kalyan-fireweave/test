@@ -4,6 +4,8 @@ import { GetNoteUseCase } from '../../application/use-cases/GetNoteUseCase';
 import { CreateNoteUseCase } from '../../application/use-cases/CreateNoteUseCase';
 import { UpdateNoteUseCase } from '../../application/use-cases/UpdateNoteUseCase';
 import { DeleteNoteUseCase } from '../../application/use-cases/DeleteNoteUseCase';
+import { SearchNotesUseCase } from '../../application/use-cases/SearchNotesUseCase';
+import { isFeatureEnabled, posthog } from '../../infrastructure/featureFlags';
 
 export class NoteController {
   constructor(
@@ -11,7 +13,8 @@ export class NoteController {
     private readonly getNote: GetNoteUseCase,
     private readonly createNote: CreateNoteUseCase,
     private readonly updateNote: UpdateNoteUseCase,
-    private readonly deleteNote: DeleteNoteUseCase
+    private readonly deleteNote: DeleteNoteUseCase,
+    private readonly searchNotes: SearchNotesUseCase
   ) {}
 
   list = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -20,6 +23,42 @@ export class NoteController {
       res.json(notes);
     } catch (err) {
       next(err);
+    }
+  };
+
+  search = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    // [note-full-text-search] flag-gated rollout: new code path guarded by
+    // the note-full-text-search flag, cohort-keyed on the X-User-Id header.
+    const cohortKey = req.header('x-user-id') ?? 'anonymous';
+    const variantOn = await isFeatureEnabled('note-full-text-search', cohortKey);
+
+    if (variantOn) {
+      const startedAt = Date.now();
+      try {
+        posthog.capture({
+          distinctId: cohortKey,
+          event: 'feature.note-full-text-search.adopted',
+        });
+
+        const query = typeof req.query.q === 'string' ? req.query.q : '';
+        const results = await this.searchNotes.execute(query);
+        res.json(results);
+
+        posthog.capture({
+          distinctId: cohortKey,
+          event: 'feature.note-full-text-search.duration_ms',
+          properties: { ms: Date.now() - startedAt },
+        });
+      } catch (err) {
+        posthog.capture({
+          distinctId: cohortKey,
+          event: 'feature.note-full-text-search.error',
+        });
+        next(err);
+      }
+    } else {
+      // Baseline: search is not enabled for this cohort.
+      res.status(404).json({ error: 'Not found' });
     }
   };
 
