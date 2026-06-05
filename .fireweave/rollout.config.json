@@ -39,8 +39,8 @@
     }
   ],
   "orgId": "yQ78AZtMwNDUNZONpI4Sk9DyM0tZXYma",
-  "projectId": "c275cbdd-237a-47f0-a58f-6639501865ae",
-  "projectName": "notepad_test",
+  "projectId": "fd922c85-cb2f-4974-97a9-072145f4faa1",
+  "projectName": "test_new",
   "providers": {
     "alert.lifecycle": "sentry",
     "feature-flag.control": "fireweave-posthog",
@@ -118,5 +118,9 @@
       "symbol": "createNotesStore",
       "wrapStyle": "function-guard"
     }
-  ]
+  ],
+  "profile": "cloud-3",
+  "cli": {
+    "initVersion": "1.0.0"
+  }
 }
