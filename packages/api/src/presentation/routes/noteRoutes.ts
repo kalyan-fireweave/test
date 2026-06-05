@@ -6,6 +6,14 @@ export async function createNoteRouter(controller: NoteController): Promise<Rout
   const router = Router();
 
   router.get('/', controller.list);
+
+  // [note-full-text-search] flag-gated rollout: register the search route only
+  // when the flag is enabled at boot. Placed before '/:id' so '/search' wins.
+  const searchEnabled = await isFeatureEnabled('note-full-text-search', 'anonymous');
+  if (searchEnabled) {
+    router.get('/search', controller.search);
+  }
+
   router.get('/:id', controller.get);
   router.post('/', controller.create);
   router.put('/:id', controller.update);
