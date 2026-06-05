@@ -18,6 +18,20 @@
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+/*
+ * new-background-colors rollout: alternate "fresh" background palette.
+ * Applied only when the feature flag is enabled (see +layout.svelte);
+ * the default :root palette above is the baseline / safe default.
+ */
+:root[data-bg-theme='fresh'] {
+  --bg: #0d1b2a;
+  --surface: #16263c;
+  --surface-hover: #1f3350;
+  --border: #2a3f5f;
+  --accent: #5aa9e6;
+  --accent-hover: #7cc0f5;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
