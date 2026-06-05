@@ -7,6 +7,7 @@ import { GetNoteUseCase } from '../application/use-cases/GetNoteUseCase';
 import { CreateNoteUseCase } from '../application/use-cases/CreateNoteUseCase';
 import { UpdateNoteUseCase } from '../application/use-cases/UpdateNoteUseCase';
 import { DeleteNoteUseCase } from '../application/use-cases/DeleteNoteUseCase';
+import { SearchNotesUseCase } from '../application/use-cases/SearchNotesUseCase';
 import { NoteController } from './controllers/NoteController';
 import { createNoteRouter } from './routes/noteRoutes';
 import { errorHandler } from './middleware/errorHandler';
@@ -27,7 +28,8 @@ export async function createApp(pool: Pool): Promise<express.Application> {
     new GetNoteUseCase(noteRepo),
     new CreateNoteUseCase(noteRepo),
     new UpdateNoteUseCase(noteRepo),
-    new DeleteNoteUseCase(noteRepo)
+    new DeleteNoteUseCase(noteRepo),
+    new SearchNotesUseCase(noteRepo)
   );
 
   app.use('/api/notes', await createNoteRouter(controller));

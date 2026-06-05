@@ -1,12 +1,12 @@
 {
   "feature": {
-    "createdAt": "2026-06-04T00:00:00.000Z",
-    "description": "Real-time collaborative note editing with presence indicators and conflict resolution",
-    "name": "notes-collaboration"
+    "createdAt": "2026-06-05T00:00:00.000Z",
+    "description": "Introduce note full-text search behind a feature flag",
+    "name": "note-full-text-search"
   },
   "flags": [
     {
-      "key": "notes-collaboration",
+      "key": "note-full-text-search",
       "providerId": "fireweave-posthog",
       "safeDefault": false,
       "type": "boolean"
@@ -14,33 +14,27 @@
   ],
   "metrics": [
     {
-      "id": "notes-collaboration.adopted",
-      "query": "SELECT count() FROM events WHERE event = 'feature.notes-collaboration.adopted'",
+      "id": "note-full-text-search.adopted",
+      "query": "SELECT count() FROM events WHERE event = 'feature.note-full-text-search.adopted'",
       "severity": "info",
       "threshold": "> 0"
     },
     {
-      "id": "notes-collaboration.error",
-      "query": "SELECT count() FROM events WHERE event = 'feature.notes-collaboration.error'",
+      "id": "note-full-text-search.error",
+      "query": "SELECT count() FROM events WHERE event = 'feature.note-full-text-search.error'",
       "severity": "page",
       "threshold": "< 10"
     },
     {
-      "id": "notes-collaboration.duration_ms",
-      "query": "SELECT avg(toFloat64OrNull(properties.ms)) FROM events WHERE event = 'feature.notes-collaboration.duration_ms'",
+      "id": "note-full-text-search.duration_ms",
+      "query": "SELECT avg(toFloat64OrNull(properties.ms)) FROM events WHERE event = 'feature.note-full-text-search.duration_ms'",
       "severity": "warn",
       "threshold": "< 5000"
-    },
-    {
-      "id": "notes-collaboration.session_started",
-      "query": "SELECT count() FROM events WHERE event = 'feature.notes-collaboration.session_started'",
-      "severity": "info",
-      "threshold": "> 0"
     }
   ],
-  "orgId": "yQ78AZtMwNDUNZONpI4Sk9DyM0tZXYma",
-  "projectId": "fd922c85-cb2f-4974-97a9-072145f4faa1",
-  "projectName": "test_new",
+  "orgId": "z2SZpl4o4aufgXpB5gJDYrNwEJHznRzm",
+  "projectId": "67635e44-492f-4f88-9888-bbaebf7e6a18",
+  "projectName": "test_note",
   "providers": {
     "alert.lifecycle": "sentry",
     "feature-flag.control": "fireweave-posthog",
@@ -54,7 +48,7 @@
         "condition": "gt",
         "id": "error-rate-guardrail",
         "metric": {
-          "query": "SELECT count() FROM events WHERE event = 'feature.notes-collaboration.error'",
+          "query": "SELECT count() FROM events WHERE event = 'feature.note-full-text-search.error'",
           "queryLanguage": "hogql",
           "source": "metric.query"
         },
@@ -66,15 +60,15 @@
     "schedule": [
       {
         "holdMinutes": 15,
-        "percent": 10
-      },
-      {
-        "holdMinutes": 15,
         "percent": 25
       },
       {
         "holdMinutes": 15,
         "percent": 50
+      },
+      {
+        "holdMinutes": 15,
+        "percent": 75
       },
       {
         "holdMinutes": 15,
@@ -95,27 +89,15 @@
   "version": 1,
   "wrapPoints": [
     {
+      "file": "packages/api/src/presentation/controllers/NoteController.ts",
+      "flagKey": "note-full-text-search",
+      "symbol": "NoteController.search",
+      "wrapStyle": "method-guard"
+    },
+    {
       "file": "packages/api/src/presentation/routes/noteRoutes.ts",
-      "flagKey": "notes-collaboration",
+      "flagKey": "note-full-text-search",
       "symbol": "createNoteRouter",
-      "wrapStyle": "function-guard"
-    },
-    {
-      "file": "packages/api/src/application/use-cases/CreateNoteUseCase.ts",
-      "flagKey": "notes-collaboration",
-      "symbol": "CreateNoteUseCase.execute",
-      "wrapStyle": "method-guard"
-    },
-    {
-      "file": "packages/api/src/application/use-cases/UpdateNoteUseCase.ts",
-      "flagKey": "notes-collaboration",
-      "symbol": "UpdateNoteUseCase.execute",
-      "wrapStyle": "method-guard"
-    },
-    {
-      "file": "packages/web/src/lib/stores/notes.ts",
-      "flagKey": "notes-collaboration",
-      "symbol": "createNotesStore",
       "wrapStyle": "function-guard"
     }
   ],
