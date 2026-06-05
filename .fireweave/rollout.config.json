@@ -1,12 +1,12 @@
 {
   "feature": {
-    "createdAt": "2026-06-05T00:00:00.000Z",
-    "description": "Introduce note full-text search behind a feature flag",
-    "name": "note-full-text-search"
+    "createdAt": "2026-06-05T20:45:00.000Z",
+    "description": "Gate an alternate background palette behind a feature flag in the web app",
+    "name": "new-background-colors"
   },
   "flags": [
     {
-      "key": "note-full-text-search",
+      "key": "new-background-colors",
       "providerId": "fireweave-posthog",
       "safeDefault": false,
       "type": "boolean"
@@ -14,33 +14,30 @@
   ],
   "metrics": [
     {
-      "id": "note-full-text-search.adopted",
-      "query": "SELECT count() FROM events WHERE event = 'feature.note-full-text-search.adopted'",
+      "id": "new-background-colors.adopted",
+      "query": "SELECT count() FROM events WHERE event = 'feature.new-background-colors.adopted'",
       "severity": "info",
       "threshold": "> 0"
     },
     {
-      "id": "note-full-text-search.error",
-      "query": "SELECT count() FROM events WHERE event = 'feature.note-full-text-search.error'",
+      "id": "new-background-colors.error",
+      "query": "SELECT count() FROM events WHERE event = 'feature.new-background-colors.error'",
       "severity": "page",
       "threshold": "< 10"
     },
     {
-      "id": "note-full-text-search.duration_ms",
-      "query": "SELECT avg(toFloat64OrNull(properties.ms)) FROM events WHERE event = 'feature.note-full-text-search.duration_ms'",
+      "id": "new-background-colors.duration_ms",
+      "query": "SELECT avg(toFloat64OrNull(properties.ms)) FROM events WHERE event = 'feature.new-background-colors.duration_ms'",
       "severity": "warn",
       "threshold": "< 5000"
     }
   ],
   "orgId": "z2SZpl4o4aufgXpB5gJDYrNwEJHznRzm",
-  "projectId": "67635e44-492f-4f88-9888-bbaebf7e6a18",
-  "projectName": "test_note",
+  "projectId": "c2e3effa-c087-40ac-b10d-26f66b4356b7",
+  "projectName": "fresh test",
   "providers": {
-    "alert.lifecycle": "sentry",
-    "feature-flag.control": "fireweave-posthog",
-    "log.ingestion": "sentry",
-    "metric.query": "sentry",
-    "trace.distributed": "sentry"
+    "feature-flags.flag.control": "fireweave-posthog",
+    "observability.query.metrics": "sentry"
   },
   "rollout": {
     "guardrails": [
@@ -48,7 +45,7 @@
         "condition": "gt",
         "id": "error-rate-guardrail",
         "metric": {
-          "query": "SELECT count() FROM events WHERE event = 'feature.note-full-text-search.error'",
+          "query": "SELECT count() FROM events WHERE event = 'feature.new-background-colors.error'",
           "queryLanguage": "hogql",
           "source": "metric.query"
         },
@@ -89,20 +86,10 @@
   "version": 1,
   "wrapPoints": [
     {
-      "file": "packages/api/src/presentation/controllers/NoteController.ts",
-      "flagKey": "note-full-text-search",
-      "symbol": "NoteController.search",
-      "wrapStyle": "method-guard"
-    },
-    {
-      "file": "packages/api/src/presentation/routes/noteRoutes.ts",
-      "flagKey": "note-full-text-search",
-      "symbol": "createNoteRouter",
-      "wrapStyle": "function-guard"
+      "file": "packages/web/src/routes/+layout.svelte",
+      "flagKey": "new-background-colors",
+      "symbol": "onMount",
+      "wrapStyle": "component-guard"
     }
-  ],
-  "profile": "cloud-3",
-  "cli": {
-    "initVersion": "1.0.0"
-  }
+  ]
 }

@@ -9,3 +9,13 @@ export function initFeatureFlags() {
 export async function isFeatureEnabled(flagKey: string, _cohortKey?: string): Promise<boolean> {
   return posthog.isFeatureEnabled(flagKey) ?? false;
 }
+
+/** Cohort/bucketing identifier for the current visitor. */
+export function getCohortKey(): string | undefined {
+  return posthog.get_distinct_id?.();
+}
+
+/** Emit a rollout telemetry event through the provider client. */
+export function captureFeatureEvent(event: string, props?: Record<string, unknown>): void {
+  posthog.capture(event, props);
+}
