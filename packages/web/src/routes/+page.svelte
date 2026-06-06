@@ -2,11 +2,25 @@
   import { onMount } from 'svelte';
   import { notes } from '$lib/stores/notes';
   import type { Note } from '$lib/types';
+  import {
+    initFeatureFlags,
+    isFeatureEnabled,
+    getCohortKey,
+    captureFeatureEvent,
+  } from '$lib/featureFlags';
+
+  const COPY_FLAG_KEY = 'copy-note-to-clipboard';
 
   let selectedNote: Note | null = null;
   let isCreating = false;
   let isEditing = false;
   let loadError = '';
+
+  // copy-note-to-clipboard rollout state. Safe default (flag off / eval
+  // error) keeps the Copy button hidden so behaviour matches baseline.
+  let copyEnabled = false;
+  let copyStatus: 'idle' | 'copied' | 'failed' = 'idle';
+  let copyResetTimer: ReturnType<typeof setTimeout> | undefined;
 
   // Form state
   let formTitle = '';
@@ -19,6 +33,20 @@
       await notes.load();
     } catch {
       loadError = 'Failed to load notes. Is the API running?';
+    }
+
+    // copy-note-to-clipboard rollout: gate the Copy button behind the
+    // Fireweave-managed flag. initFeatureFlags() is idempotent and called
+    // here defensively because the page mounts before the layout's onMount.
+    try {
+      initFeatureFlags();
+      copyEnabled = await isFeatureEnabled(COPY_FLAG_KEY, getCohortKey());
+    } catch (err) {
+      copyEnabled = false;
+      captureFeatureEvent('feature.copy-note-to-clipboard.error', {
+        message: err instanceof Error ? err.message : String(err),
+        phase: 'evaluate',
+      });
     }
   });
 
@@ -93,6 +121,33 @@
       }
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Failed to delete note.');
+    }
+  }
+
+  // New code path guarded by copy-note-to-clipboard. Copies the note's
+  // title + body to the clipboard and emits cohort-keyed telemetry so the
+  // controller can ramp safely.
+  async function copyNote(note: Note) {
+    const cohortKey = getCohortKey();
+    const start = performance.now();
+    clearTimeout(copyResetTimer);
+    try {
+      await navigator.clipboard.writeText(`${note.title}\n\n${note.content}`);
+      copyStatus = 'copied';
+      captureFeatureEvent('feature.copy-note-to-clipboard.adopted', { cohortKey });
+      captureFeatureEvent('feature.copy-note-to-clipboard.duration_ms', {
+        ms: performance.now() - start,
+        cohortKey,
+      });
+    } catch (err) {
+      copyStatus = 'failed';
+      captureFeatureEvent('feature.copy-note-to-clipboard.error', {
+        message: err instanceof Error ? err.message : String(err),
+        phase: 'write',
+        cohortKey,
+      });
+    } finally {
+      copyResetTimer = setTimeout(() => (copyStatus = 'idle'), 2000);
     }
   }
 
@@ -189,6 +244,15 @@
         <div class="note-detail-header">
           <h1 data-testid="note-detail-title">{note.title}</h1>
           <div class="note-detail-actions">
+            {#if copyEnabled}
+              <button
+                class="btn-ghost"
+                on:click={() => copyNote(note)}
+                data-testid="copy-note-btn"
+              >
+                {copyStatus === 'copied' ? 'Copied!' : copyStatus === 'failed' ? 'Copy failed' : 'Copy'}
+              </button>
+            {/if}
             <button class="btn-ghost" on:click={() => startEdit(note)} data-testid="edit-note-btn">
               Edit
             </button>
