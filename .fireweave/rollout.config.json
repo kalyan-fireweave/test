@@ -1,12 +1,12 @@
 {
   "feature": {
-    "createdAt": "2026-06-05T20:45:00.000Z",
-    "description": "Gate an alternate background palette behind a feature flag in the web app",
-    "name": "new-background-colors"
+    "createdAt": "2026-06-06T00:00:00.000Z",
+    "description": "Gate a Copy-to-clipboard button on the note detail view behind a feature flag in the web app",
+    "name": "copy-note-to-clipboard"
   },
   "flags": [
     {
-      "key": "new-background-colors",
+      "key": "copy-note-to-clipboard",
       "providerId": "fireweave-posthog",
       "safeDefault": false,
       "type": "boolean"
@@ -14,20 +14,20 @@
   ],
   "metrics": [
     {
-      "id": "new-background-colors.adopted",
-      "query": "SELECT count() FROM events WHERE event = 'feature.new-background-colors.adopted'",
+      "id": "copy-note-to-clipboard.adopted",
+      "query": "SELECT count() FROM events WHERE event = 'feature.copy-note-to-clipboard.adopted'",
       "severity": "info",
       "threshold": "> 0"
     },
     {
-      "id": "new-background-colors.error",
-      "query": "SELECT count() FROM events WHERE event = 'feature.new-background-colors.error'",
+      "id": "copy-note-to-clipboard.error",
+      "query": "SELECT count() FROM events WHERE event = 'feature.copy-note-to-clipboard.error'",
       "severity": "page",
       "threshold": "< 10"
     },
     {
-      "id": "new-background-colors.duration_ms",
-      "query": "SELECT avg(toFloat64OrNull(properties.ms)) FROM events WHERE event = 'feature.new-background-colors.duration_ms'",
+      "id": "copy-note-to-clipboard.duration_ms",
+      "query": "SELECT avg(toFloat64OrNull(properties.ms)) FROM events WHERE event = 'feature.copy-note-to-clipboard.duration_ms'",
       "severity": "warn",
       "threshold": "< 5000"
     }
@@ -45,7 +45,7 @@
         "condition": "gt",
         "id": "error-rate-guardrail",
         "metric": {
-          "query": "SELECT count() FROM events WHERE event = 'feature.new-background-colors.error'",
+          "query": "SELECT count() FROM events WHERE event = 'feature.copy-note-to-clipboard.error'",
           "queryLanguage": "hogql",
           "source": "metric.query"
         },
@@ -86,9 +86,9 @@
   "version": 1,
   "wrapPoints": [
     {
-      "file": "packages/web/src/routes/+layout.svelte",
-      "flagKey": "new-background-colors",
-      "symbol": "onMount",
+      "file": "packages/web/src/routes/+page.svelte",
+      "flagKey": "copy-note-to-clipboard",
+      "symbol": "copyNote",
       "wrapStyle": "component-guard"
     }
   ]
