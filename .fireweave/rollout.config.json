@@ -1,12 +1,12 @@
 {
   "feature": {
     "createdAt": "2026-06-06T00:00:00.000Z",
-    "description": "Gate a Copy-to-clipboard button on the note detail view behind a feature flag in the web app",
-    "name": "copy-note-to-clipboard"
+    "description": "Show a live word and character count badge on the note detail view, gated behind a feature flag. Adoption is tracked in PostHog; errors and latency are monitored in Sentry.",
+    "name": "note-word-count"
   },
   "flags": [
     {
-      "key": "copy-note-to-clipboard",
+      "key": "note-word-count",
       "providerId": "fireweave-posthog",
       "safeDefault": false,
       "type": "boolean"
@@ -14,27 +14,27 @@
   ],
   "metrics": [
     {
-      "id": "copy-note-to-clipboard.adopted",
-      "query": "SELECT count() FROM events WHERE event = 'feature.copy-note-to-clipboard.adopted'",
+      "id": "note-word-count.adopted",
+      "query": "SELECT count() FROM events WHERE event = 'feature.note-word-count.adopted'",
       "severity": "info",
       "threshold": "> 0"
     },
     {
-      "id": "copy-note-to-clipboard.error",
-      "query": "SELECT count() FROM events WHERE event = 'feature.copy-note-to-clipboard.error'",
+      "id": "note-word-count.error",
+      "query": "SELECT count() FROM events WHERE event = 'feature.note-word-count.error'",
       "severity": "page",
       "threshold": "< 10"
     },
     {
-      "id": "copy-note-to-clipboard.duration_ms",
-      "query": "SELECT avg(toFloat64OrNull(properties.ms)) FROM events WHERE event = 'feature.copy-note-to-clipboard.duration_ms'",
+      "id": "note-word-count.duration_ms",
+      "query": "SELECT avg(toFloat64OrNull(properties.ms)) FROM events WHERE event = 'feature.note-word-count.duration_ms'",
       "severity": "warn",
       "threshold": "< 5000"
     }
   ],
   "orgId": "z2SZpl4o4aufgXpB5gJDYrNwEJHznRzm",
-  "projectId": "c5c73382-53b7-42bc-9453-4524efcfdebb",
-  "projectName": "ramping test",
+  "projectId": "f73d6088-d670-48ea-a7b1-8a76bc37691b",
+  "projectName": "final-test",
   "providers": {
     "feature-flags.flag.control": "fireweave-posthog",
     "observability.query.metrics": "sentry"
@@ -45,7 +45,7 @@
         "condition": "gt",
         "id": "error-rate-guardrail",
         "metric": {
-          "query": "SELECT count() FROM events WHERE event = 'feature.copy-note-to-clipboard.error'",
+          "query": "SELECT count() FROM events WHERE event = 'feature.note-word-count.error'",
           "queryLanguage": "hogql",
           "source": "metric.query"
         },
@@ -56,19 +56,19 @@
     ],
     "schedule": [
       {
-        "holdMinutes": 15,
+        "holdMinutes": 1,
         "percent": 25
       },
       {
-        "holdMinutes": 15,
+        "holdMinutes": 1,
         "percent": 50
       },
       {
-        "holdMinutes": 15,
+        "holdMinutes": 1,
         "percent": 75
       },
       {
-        "holdMinutes": 15,
+        "holdMinutes": 1,
         "percent": 100
       }
     ],
@@ -87,13 +87,9 @@
   "wrapPoints": [
     {
       "file": "packages/web/src/routes/+page.svelte",
-      "flagKey": "copy-note-to-clipboard",
-      "symbol": "copyNote",
+      "flagKey": "note-word-count",
+      "symbol": "computeWordCount",
       "wrapStyle": "component-guard"
     }
-  ],
-  "profile": "animating-posted-manual.ngrok-free.dev-3",
-  "cli": {
-    "initVersion": "0.1.0"
-  }
+  ]
 }

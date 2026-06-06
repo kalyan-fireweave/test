@@ -8,8 +8,10 @@
     getCohortKey,
     captureFeatureEvent,
   } from '$lib/featureFlags';
+  import { initSentry, captureFeatureError, measureSpan } from '$lib/sentry';
 
   const COPY_FLAG_KEY = 'copy-note-to-clipboard';
+  const WORD_COUNT_FLAG_KEY = 'note-word-count';
 
   let selectedNote: Note | null = null;
   let isCreating = false;
@@ -21,6 +23,12 @@
   let copyEnabled = false;
   let copyStatus: 'idle' | 'copied' | 'failed' = 'idle';
   let copyResetTimer: ReturnType<typeof setTimeout> | undefined;
+
+  // note-word-count rollout state. Safe default (flag off / eval error)
+  // hides the badge so behaviour matches baseline. Adoption is tracked in
+  // PostHog; errors and latency are monitored in Sentry.
+  let wordCountEnabled = false;
+  let wordCountLabel = '';
 
   // Form state
   let formTitle = '';
@@ -48,7 +56,46 @@
         phase: 'evaluate',
       });
     }
+
+    // note-word-count rollout: gate the word/char count badge behind the
+    // Fireweave-managed flag. Sentry is initialised here (idempotent) so the
+    // new code path's errors and latency are monitored. On eval failure the
+    // safe default keeps the badge hidden and the error is sent to Sentry.
+    try {
+      initFeatureFlags();
+      initSentry();
+      wordCountEnabled = await isFeatureEnabled(WORD_COUNT_FLAG_KEY, getCohortKey());
+    } catch (err) {
+      wordCountEnabled = false;
+      captureFeatureError('feature.note-word-count.error', err, { phase: 'evaluate' });
+    }
   });
+
+  // New code path guarded by note-word-count. Computes the live word/char
+  // count inside a Sentry span (latency monitoring), emits the adoption
+  // counter to PostHog, and routes any failure to Sentry.
+  function computeWordCount(note: Note): void {
+    const cohortKey = getCohortKey();
+    measureSpan(
+      'feature.note-word-count.duration_ms',
+      () => {
+        try {
+          const trimmed = note.content.trim();
+          const words = trimmed ? trimmed.split(/\s+/).length : 0;
+          const chars = note.content.length;
+          wordCountLabel = `${words} word${words === 1 ? '' : 's'} · ${chars} char${chars === 1 ? '' : 's'}`;
+          captureFeatureEvent('feature.note-word-count.adopted', { cohortKey, words, chars });
+        } catch (err) {
+          wordCountLabel = '';
+          captureFeatureError('feature.note-word-count.error', err, { cohortKey, phase: 'compute' });
+        }
+      },
+      { cohortKey },
+    );
+  }
+
+  // Recompute whenever the selected note changes while the flag is on.
+  $: if (wordCountEnabled && selectedNote) computeWordCount(selectedNote);
 
   function startCreate() {
     selectedNote = null;
@@ -261,7 +308,12 @@
             </button>
           </div>
         </div>
-        <p class="note-meta">Updated {formatDate(note.updatedAt)}</p>
+        <p class="note-meta">
+          Updated {formatDate(note.updatedAt)}
+          {#if wordCountEnabled && wordCountLabel}
+            <span class="word-count-badge" data-testid="word-count-badge">{wordCountLabel}</span>
+          {/if}
+        </p>
         <div class="note-content" data-testid="note-detail-content">{note.content}</div>
       </div>
 
@@ -399,6 +451,16 @@
     font-size: 0.8125rem;
     color: var(--text-muted);
     margin-bottom: 1.5rem;
+  }
+  .word-count-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.0625rem 0.5rem;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--text-muted);
   }
   .note-content {
     white-space: pre-wrap;
