@@ -10,6 +10,7 @@
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
+    "@sentry/sveltekit": "^8.0.0",
     "posthog-js": "^1.145.0"
   },
   "devDependencies": {
